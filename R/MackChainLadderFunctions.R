@@ -4,36 +4,29 @@
 ## Date:10/11/2007
 ## Date:08/09/2008
 
-checkTriangle <- function(Triangle){
-
-    .dim <- dim(Triangle)
-    n <- .dim[2]
-    m <- .dim[1]
-
-    if(length(.dim)==3 & .dim[3]==1){
-        dim(Triangle) <- c(m,n)
-    }
-    if(class(Triangle)=="data.frame"){
-        Triangle <- as.matrix(Triangle)
-    }
-
-    return(list(Triangle=Triangle, m=m,n=n))
-}
-
-
 MackChainLadder <- function(Triangle, weights=1/Triangle, tail=FALSE){
 
-    cTriangle <- checkTriangle(Triangle)
-    m <- cTriangle$m
-    n <- cTriangle$n
-    Triangle <- cTriangle$Triangle
+    n <- ncol(Triangle)
+    m <- nrow(Triangle)
 
-    myModel <- ChainLadder(Triangle, weights)
+    if(n!=m){
+        print(dim(Triangle))
+        stop("Number of origin years has to be equal to number of development years.\n")
+    }
+    myModel <- vector("list", (n-1))
+    for(i in c(1:(n-1))){
+        ## weighted linear regression through origin
+        x <- Triangle[1:(m-i),i]
+   	y <- Triangle[1:(m-i),i+1]
+
+  	myModel[[i]] <- lm(y~x+0, weights=weights[1:(m-i),i], data=data.frame(x,y))
+    }
+
     ## Predict the chain ladder model
-    FullTriangle <- predict.TriangleModel(list(Models=myModel$Models, Triangle=Triangle))
+    FullTriangle <- predict.TriangleModel(list(Models=myModel, Triangle=Triangle))
 
     ## Estimate the standard error
-    StdErr <- Mack.S.E(myModel$Models, FullTriangle, loglinear=TRUE)
+    StdErr <- Mack.S.E(myModel, FullTriangle, loglinear=TRUE)
     Total.SE <- TotalMack.S.E(FullTriangle, StdErr$f, StdErr$f.se, StdErr$F.se)
 
     ## Check for tail factor
@@ -48,15 +41,22 @@ MackChainLadder <- function(Triangle, weights=1/Triangle, tail=FALSE){
         tail.factor <- tail
     }
 
-    ## Estimate standard error for the tail
+    ## Estimate standard error for the tail factor
     if(tail.factor>1){
-        tail.out <- tail.SE(FullTriangle, StdErr, Total.SE, tail.factor)
-        FullTriangle <- tail.out[["FullTriangle"]]
-        StdErr <- tail.out[["StdErr"]]
-        Total.SE <- tail.out[["Total.SE"]]
+        FullTriangle[,n] <- FullTriangle[,n] * tail.factor
+        StdErr$f[n] <- tail.factor
+
+        StdErr$f.se[n] <- mack.se.fult(clratios = StdErr$f, se.f = StdErr$f.se)
+        StdErr$F.se <- cbind(StdErr$F.se, mack.se.Fult(se.fult = StdErr$f.se[n], se.F = StdErr$F.se))
+        StdErr$FullTriangle.se[,n] <- sqrt(FullTriangle[, n]^2 * (StdErr$F.se[,n]^2 + StdErr$f.se[n]^2) +
+                                           StdErr$FullTriangle.se[,n]^2 * tail.factor^2)
+
+        Total.SE <- sqrt(Total.SE^2 * StdErr$f[n]^2 + sum(FullTriangle[c(1:m), n]^2 * (StdErr$F.se[c(1:m), n]^2)) +
+                         sum(FullTriangle[c(1:m), n])^2 * StdErr$f.se[n]^2)
     }
 
-    ## Collect the output
+
+    ## Collect the output
     output <- list()
     output[["call"]] <-  match.call(expand.dots = FALSE)
     output[["Triangle"]] <- Triangle
@@ -73,25 +73,22 @@ MackChainLadder <- function(Triangle, weights=1/Triangle, tail=FALSE){
     class(output) <- c("MackChainLadder", "TriangleModel", "list")
     return(output)
 }
-########################################################################
-## Estimate standard error for tail
 
-tail.SE <- function(FullTriangle, StdErr, Total.SE, tail.factor){
-    n <- ncol(FullTriangle)
-    m <- nrow(FullTriangle)
-    FullTriangle[,n] <- FullTriangle[,n] * tail.factor
-    StdErr$f[n] <- tail.factor
-    StdErr$f.se[n] <- mack.se.fult(clratios = StdErr$f, se.f = StdErr$f.se)
-    StdErr$F.se <- cbind(StdErr$F.se, mack.se.Fult(se.fult = StdErr$f.se[n], se.F = StdErr$F.se))
-    StdErr$FullTriangle.se[,n] <- sqrt(FullTriangle[, n]^2 * (StdErr$F.se[,n]^2 + StdErr$f.se[n]^2) +
-                                       StdErr$FullTriangle.se[,n]^2 * tail.factor^2)
-    Total.SE <- sqrt(Total.SE^2 * StdErr$f[n]^2 + sum(FullTriangle[c(1:m), n]^2 * (StdErr$F.se[c(1:m), n]^2), na.rm=TRUE) +
-                     sum(FullTriangle[c(1:m), n], na.rm=TRUE)^2 * StdErr$f.se[n]^2)
-    output <- list(FullTriangle=FullTriangle, StdErr=StdErr, Total.SE=Total.SE)
-    return(output)
+###############################################################################
+## predict
+##
+predict.TriangleModel <- function(object,...){
+    n <- ncol(object[["Triangle"]])
+    m <- nrow(object[["Triangle"]])
+    FullTriangle <- object[["Triangle"]]
+    for(j in c(1:(n-1))){
+    	for(k in c((n-j+1):m)){
+            FullTriangle[k, j+1] <- predict(object[["Models"]][[j]],
+                                            newdata=data.frame(x=FullTriangle[k, j]),...)
+        }
+    }
+    return(FullTriangle)
 }
-
-
 
 ##############################################################################
 ## Calculation of the mean squared error and standard error
@@ -202,10 +199,10 @@ print.MackChainLadder <- function(x,...){
     Totals <- c(Totals, round(x[["Total.Mack.S.E"]]/sum(res$IBNR,na.rm=TRUE),2))
     Totals <- as.data.frame(Totals)
 
-    colnames(Totals)=c("Totals")
-    rownames(Totals) <- c("Latest:","Ultimate:",
-                          "IBNR:","Mack S.E.:",
-                          "CoV:")
+    colnames(Totals)=c("Totals:")
+    rownames(Totals) <- c("Sum of Latest:","Sum of Ultimate:",
+                          "Sum of IBNR:","Total Mack S.E.:",
+                          "Total CoV:")
     cat("\n")
     print(Totals, quote=FALSE)
     #invisible(x)
@@ -291,6 +288,34 @@ residuals.MackChainLadder <- function(object,...){
     fitted.value)
     return(na.omit(myResiduals))
 }
+
+################################################################################
+## estimate tail factor, idea from Thomas Mack:
+##       THE STANDARD ERROR OF CHAIN LADDER RESERVE ESTIMATES:
+##       RECURSIVE CALCULATION AND INCLUSION OF A TAIL FACTOR
+##
+tailfactor <- function (clratios){
+    f <- clratios
+    n <- length(f)
+    if (f[n - 2] * f[n - 1] > 1.0001) {
+        fn <- which(clratios > 1)
+        f <- clratios[fn]
+        n <- length(f)
+        tail.model <- lm(log(f - 1) ~ fn)
+        co <- coef(tail.model)
+        tail <- exp(co[1] + c(n:(n + 100)) * co[2]) + 1
+        tail <- prod(tail)
+        if (tail > 2){
+            print("The estimate tail factor was bigger than 2 and has been reset to 1.")
+            tail <- 1
+        }
+    }
+    else {
+        tail <- 1
+    }
+    return(list(tail.factor=tail, tail.model=tail.model))
+}
+
 
 
 ##############################################################################

@@ -31,13 +31,15 @@ MunichChainLadder <- function(Paid, Incurred){
     if(nrow(Paid) != ncol(Paid))
  	stop("Number of origin years has to be equal to number of development years.\n")
 
-    Paid <- checkTriangle(Paid)$Triangle
-    Incurred <- checkTriangle(Incurred)$Triangle
 
     MackPaid = MackChainLadder(Paid)
     MackIncurred = MackChainLadder(Incurred)
 
     n <- ncol(Paid)
+
+    FullPaid = MackPaid[["FullTriangle"]]
+    FullIncurred = MackIncurred[["FullTriangle"]]
+
 
     myQModel <- vector("list", n)
     q.f <- rep(1,n)
@@ -108,12 +110,12 @@ MunichChainLadder <- function(Paid, Incurred){
     FullIncurred <- Incurred
     for(j in c(1:(n-1))){
         for(i in c((n-j+1):n) ){
-            ## Paid
+                                        # Paid
             mclcorrection <- lambdaP*MackPaid$sigma[j]/rhoP.sigma[j]*(
                                                                       FullIncurred[i,j]/FullPaid[i,j]-qinverse.f[j]
                                                                       )
             FullPaid[i,j+1] = FullPaid[i,j] * (MackPaid$f[j] + mclcorrection)
-            ## Incurred
+                                        # Incurred
             mclcorrection <- lambdaI*MackIncurred$sigma[j]/rhoI.sigma[j]*(
                                                                           FullPaid[i,j]/FullIncurred[i,j]-q.f[j]
                                                                           )
