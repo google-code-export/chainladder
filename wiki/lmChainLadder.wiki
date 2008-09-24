@@ -1,0 +1,21 @@
+{{{
+
+library(ChainLadder)
+GenIns
+source("http://chainladder.googlecode.com/svn/trunk/R/ChainLadder.R")
+CL <- ChainLadder(GenIns)
+n <- ncol(GenIns)
+## predict the model
+CL.predict <- lapply(CL$Models, predict)
+
+do.call("cbind", lapply(, function(x) {
+    if(length(x)==(n-1)){
+        x
+    }else{
+        c(x,rep(NA, 9-length(x)))
+    }
+}
+                        )
+        )
+
+}}}
