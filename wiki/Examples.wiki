@@ -16,6 +16,11 @@ origin    1     2     3     4     5     6     7     8     9    10
   1990 2063    NA    NA    NA    NA    NA    NA    NA    NA    NA
 }}}
 ==Mack-Chain-Ladder==
+The {{{MackChainLadder}}} function is based on the following papers:
+
+ * Thomas Mack. Distribution-free calculation of the standard error of chain ladder reserve estimates. Astin Bulletin. Vol. 23. No 2. 1993. pp.213:225. 
+
+ * Thomas Mack. The standard error of chain ladder reserve estimates: Recursive calculation and inclusion of a tail factor. Astin Bulletin. Vol. 29. No 2. 1999. pp.361:366. 
 {{{
 > M <- MackChainLadder(RAA)
 > M
@@ -43,6 +48,9 @@ CoV:             0.52
 }}}
 http://chainladder.googlecode.com/svn/trunk/inst/Images/MackChainLadder_RAA.png
 ==Bootstrap-Chain-Ladder==
+The {{{BootChainLadder}}} function is based on the following paper:
+
+ * England, PD and Verrall, RJ (2002). Stochastic Claims Reserving in General Insurance (with discussion), British Actuarial Journal 8, III. 
 {{{
 > B <- BootChainLadder(RAA)
 > B
@@ -71,6 +79,9 @@ Total IBNR 99%: 107,636
 }}}
 http://chainladder.googlecode.com/svn/trunk/inst/Images/BootChainLadder_RAA.png
 ==Munich-Chain-Ladder==
+The {{{MunichChainLadder}}} function is based on the following paper:
+
+ * Gerhard Quarg and Thomas Mack. Munich Chain Ladder. Blatter DGVFM 26, Munich, 2004.
 {{{
 > MCL <- MunichChainLadder(MCLpaid, MCLincurred)
 > MCL
