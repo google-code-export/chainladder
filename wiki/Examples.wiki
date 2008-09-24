@@ -44,7 +44,7 @@ CoV:             0.52
 http://chainladder.googlecode.com/svn/trunk/inst/Images/MackChainLadder_RAA.png
 ==Bootstrap-Chain-Ladder==
 {{{
-> B=BootChainLadder(RAA)
+> B <- BootChainLadder(RAA)
 > B
 BootChainLadder(Triangle = RAA)
 
@@ -72,7 +72,7 @@ Total IBNR 99%: 107,636
 http://chainladder.googlecode.com/svn/trunk/inst/Images/BootChainLadder_RAA.png
 ==Munich-Chain-Ladder==
 {{{
-> MCL=MunichChainLadder(MCLpaid, MCLincurred)
+> MCL <- MunichChainLadder(MCLpaid, MCLincurred)
 > MCL
 MunichChainLadder(Paid = MCLpaid, Incurred = MCLincurred)
 
