@@ -1,4 +1,5 @@
-#Examples of the {{{ChainLadder}}} package
+ * Here we present some examples of the {{{ChainLadder}}} package. 
+ * For more information and examples see the documentation of the package and the individual functions.
 {{{
 > library(ChainLadder)
 > RAA # example data set
