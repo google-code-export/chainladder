@@ -1,4 +1,4 @@
-#Examples of the ChainLadder package
+#Examples of the {{{ChainLadder}}} package
 =Examples=
 {{{
 > library(ChainLadder)
