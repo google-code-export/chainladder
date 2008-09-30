@@ -57,25 +57,27 @@ The {{{BootChainLadder}}} function is based on the following paper:
 > B
 BootChainLadder(Triangle = RAA)
 
-   Latest Mean Ultimate Mean IBNR SD IBNR IBNR 75% IBNR 99%
-1  18,834        18,834         0       0        0        0
-2  16,704        16,885       181     707      224    2,661
-3  23,466        24,126       660   1,221    1,108    4,439
-4  27,067        28,819     1,752   1,930    2,803    7,453
-5  26,180        29,052     2,872   2,338    4,077    9,848
-6  15,852        19,614     3,762   2,472    5,098   11,198
-7  12,314        17,967     5,653   3,197    7,428   14,807
-8  13,112        24,156    11,044   4,946   13,918   24,344
-9   5,395        16,198    10,803   6,065   14,473   28,845
-10  2,063        19,121    17,058  13,550   24,243   57,510
+BootChainLadder(Triangle = RAA)
+
+     Latest Mean Ultimate Mean IBNR SD IBNR IBNR 75% IBNR 95%
+1981 18,834        18,834         0       0        0        0
+1982 16,704        16,869       165     727      186    1,360
+1983 23,466        24,185       719   1,276    1,223    3,170
+1984 27,067        28,795     1,728   1,938    2,626    5,383
+1985 26,180        29,077     2,897   2,372    4,277    7,370
+1986 15,852        19,625     3,773   2,611    5,051    8,381
+1987 12,314        17,885     5,571   3,048    7,448   11,137
+1988 13,112        24,374    11,262   5,021   14,273   19,913
+1989  5,395        16,087    10,692   5,987   14,712   21,978
+1990  2,063        19,160    17,097  13,382   24,079   42,265
 
                   Total
 Latest:         160,987
-Mean Ultimate:  214,771
-Mean IBNR:       53,784
-SD IBNR:         18,632
-Total IBNR 75%:  65,214
-Total IBNR 99%: 107,636
+Mean Ultimate:  214,890
+Mean IBNR:       53,903
+SD IBNR:         18,558
+Total IBNR 75%:  64,065
+Total IBNR 95%:  87,612
 > plot(B)
 }}}
 http://chainladder.googlecode.com/svn/trunk/inst/Images/BootChainLadder_RAA.png
@@ -88,27 +90,19 @@ The {{{MunichChainLadder}}} function is based on the following paper:
 > MCL
 MunichChainLadder(Paid = MCLpaid, Incurred = MCLincurred)
 
-  Latest Paid Latest Incurred Latest P/I Ratio Ult. Paid Ult. Incurred
-1       2,131           2,174            0.980     2,131         2,174
-2       2,348           2,454            0.957     2,382         2,443
-3       4,494           4,644            0.968     4,612         4,631
-4       5,850           6,142            0.952     6,136         6,179
-5       4,648           4,852            0.958     4,959         4,953
-6       4,010           4,406            0.910     4,682         4,670
-7       2,044           5,022            0.407     7,528         7,634
-  Ult. P/I Ratio
-1          0.980
-2          0.975
-3          0.996
-4          0.993
-5          1.001
-6          1.003
-7          0.986
+  Latest Paid Latest Incurred Latest P/I Ratio Ult. Paid Ult. Incurred Ult. P/I Ratio
+1       2,131           2,174            0.980     2,131         2,174          0.980
+2       2,348           2,454            0.957     2,382         2,443          0.975
+3       4,494           4,644            0.968     4,610         4,632          0.995
+4       5,850           6,142            0.952     6,134         6,180          0.992
+5       4,648           4,852            0.958     4,954         4,955          1.000
+6       4,010           4,406            0.910     4,672         4,670          1.000
+7       2,044           5,022            0.407     7,561         7,653          0.988
 
 Total
             Paid Incurred P/I Ratio
 Latest:   25,525   29,694      0.86
-Ultimate: 32,430   32,684      0.99
+Ultimate: 32,444   32,708      0.99
 > plot(MCL)
 }}}
 http://chainladder.googlecode.com/svn-history/r77/trunk/inst/Images/MunichChainLadder_MCLpaid_MCLincurred.png
