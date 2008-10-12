@@ -116,4 +116,4 @@ Ultimate: 32,371   32,688      0.99
 
 > plot(MCL)
 }}}
-http://chainladder.googlecode.com/svn-history/r77/trunk/inst/Images/MunichChainLadder_MCLpaid_MCLincurred.png
+http://chainladder.googlecode.com/svn/trunk/inst/Images/MunichChainLadder_MCLpaid_MCLincurred.png
