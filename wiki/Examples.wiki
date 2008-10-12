@@ -53,7 +53,7 @@ CV:              0.52
 }}}
 http://chainladder.googlecode.com/svn/trunk/inst/Images/MackChainLadder_RAA.png
 ==Bootstrap-Chain-Ladder==
-The BootChainLadder procedure provides a predictive distribution of reserves for a cumulative claims development triangle. 
+The {{{BootChainLadder}}} procedure provides a predictive distribution of reserves for a cumulative claims development triangle. 
 
 The {{{BootChainLadder}}} function is based on the following paper:
 
