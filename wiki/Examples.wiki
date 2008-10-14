@@ -1,4 +1,4 @@
- * Here we present some examples of the {{{ChainLadder}}} package 0.1.2-5. 
+ * Here we present some examples of the {{{ChainLadder}}} package 0.1.2-6. 
  * For more information and examples see the documentation of the package and the individual functions.
 {{{
 > library(ChainLadder)
