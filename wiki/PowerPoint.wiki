@@ -38,15 +38,15 @@ mySlides<-comGetProperty(myPres,"Slides")
 mySlide<-comInvoke(mySlides,"Add",1,12)
 myShapes<-comGetProperty(mySlide,"Shapes")
 myPicture<-comInvoke(myShapes,"AddPicture",
- plotFit,0,-1,80,80,300,300)
+ plotFit,0,1,100,10)
 
 mySlide<-comInvoke(mySlides,"Add",1,12)
 myShapes<-comGetProperty(mySlide,"Shapes")
 myPicture<-comInvoke(myShapes,"AddPicture",
- plotBoot,0,-1,80,80,400,300)
+ plotBoot,0,1,100,10)
 
 mySlide<-comInvoke(mySlides,"Add",1,12)
 myShapes<-comGetProperty(mySlide,"Shapes")
 myPicture<-comInvoke(myShapes,"AddPicture",
- plotMack,0,-1,80,80,300,400)
+ plotMack,0,1,100,10)
 }}}
