@@ -8,10 +8,9 @@ library(ChainLadder)
 library(MASS)
 
 M <- MackChainLadder(RAA)
-set.seed(1) # Set the random generator 
 B <- BootChainLadder(RAA)
 # fit a log-normal distribution
-fit <- fitdistr(B$IBNR.Totals, "lognormal")
+fit <- fitdistr(B$IBNR.Totals[B$IBNR.Totals>0], "lognormal")
 
 plotMack=tempfile()
 win.metafile(file=plotMack)
