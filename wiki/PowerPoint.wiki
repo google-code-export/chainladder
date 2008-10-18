@@ -8,6 +8,7 @@ library(ChainLadder)
 library(MASS)
 
 M <- MackChainLadder(RAA)
+set.seed(1) # Set the random generator 
 B <- BootChainLadder(RAA)
 # fit a log-normal distribution
 fit <- fitdistr(B$IBNR.Totals, "lognormal")
