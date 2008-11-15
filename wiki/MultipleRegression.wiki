@@ -21,7 +21,7 @@ pairs(na.omit(longRAA[,c(1,5,3,2,4)]), upper.panel=panel.smooth)
 
 # Chain ladder link ratios from multiple regression:
  
-sapply(by(longRAA, list(dev=longRAA$dev), function(x) lm(cum.value ~ 0 + prev.cum.value, weights=1/prev.cum.value, data=x)),coef)
+lm(cum.value ~ 0 + factor(dev):prev.cum.value, weights=1/prev.cum.value, data=longRAA)
 
 
 }}}
