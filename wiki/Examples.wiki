@@ -1,4 +1,4 @@
- * Here we present some examples of the {{{ChainLadder}}} package 0.1.2-6. 
+ * Here we present some examples of the {{{ChainLadder}}} package 0.1.2-12. 
  * For more information and examples see the documentation of the package and the individual functions.
 {{{
 > library(ChainLadder)
@@ -52,6 +52,11 @@ CV:              0.52
 > plot(M)
 }}}
 http://chainladder.googlecode.com/svn/trunk/inst/Images/MackChainLadder_RAA.png
+{{{
+> plot(M, lattice=TRUE)
+}}}
+http://chainladder.googlecode.com/svn/trunk/inst/Images/MackLattice.png
+
 ==Bootstrap-Chain-Ladder==
 The {{{BootChainLadder}}} procedure provides a predictive distribution of reserves for a cumulative claims development triangle. 
 
