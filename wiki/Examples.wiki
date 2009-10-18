@@ -124,7 +124,7 @@ Ultimate: 32,371   32,688      0.99
 }}}
 http://chainladder.googlecode.com/svn/trunk/inst/Images/MunichChainLadder_MCLpaid_MCLincurred.png
 
-==Utility function==
+==Utility functions==
 ===Cumulative to incremental===
 {{{
 > cum2incr(RAA)
