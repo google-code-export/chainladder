@@ -216,6 +216,7 @@ http://chainladder.googlecode.com/svn/trunk/inst/Images/MunichChainLadder_MCLpai
 91   1981  10 18834
 }}}
 ===Data frame to triangle===
+Suppose you have a data extract from your data base in R as a data.frame in X, which looks like this:
 {{{
 > head(X)
   Accident Year Dev. Year Incurred
