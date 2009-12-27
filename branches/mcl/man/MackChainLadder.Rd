@@ -1,0 +1,315 @@
+\name{MackChainLadder}
+\alias{MackChainLadder}
+
+\title{ Mack-Chain-Ladder Model }
+\description{
+  The Mack-chain-ladder model forecasts future claims developments
+  based on a historical cumulative claims development triangle and estimates
+  the standard error around those.
+}
+\usage{
+MackChainLadder(Triangle, weights = 1, alpha=1, est.sigma="log-linear",
+tail=FALSE, tail.se=NULL, tail.sigma=NULL)
+}
+%- maybe also 'usage' for other objects documented here.
+\arguments{
+  \item{Triangle}{cumulative claims triangle.  Assume columns are the development
+    period, use transpose otherwise.
+    A (mxn)-matrix \eqn{C_{ik}} 
+    which is filled for \eqn{k \leq n+1-i; i=1,\ldots,m; m\geq n }, see
+    \code{\link{qpaid}} for how to use (mxn)-development triangles with
+    m<n, say higher development period frequency (e.g quarterly) than
+    origin period frequency (e.g accident years).}
+  \item{weights}{ weights. Default: 1, which sets the weights for all
+    triangle entries to 1. Otherwise specify weights as a matrix of the same
+    dimension as \code{Triangle} with all weight entries in [0; 1]}
+  \item{alpha}{'weighting' parameter.
+    Default: 1 for all development periods; alpha=1 gives the historical chain
+    ladder age-to-age factors, alpha=0 gives the straight average of the
+    observed individual development factors and alpha=2 is the result of
+    an ordinary regression of \eqn{C_{i,k+1}} against \eqn{C_{i,k}} with
+    intercept 0, see also Mack's 1999 paper and \code{chainladder}}
+  \item{est.sigma}{defines how to estimate \eqn{sigma_{n-1}}, the
+    variability of the individual age-to-age factors at development time
+    \eqn{n-1}.
+    Default is "log-linear" for a log-linear regression, "Mack" for
+    Mack's approximation from his 1999 paper. Alternatively the user can
+    provide a numeric value. If the log-linear model appears to be
+    inappropriate (p-value > 0.05) the 'Mack' method will be used
+    instead and a warning message printed.}  
+  \item{tail}{can be logical or a numeric value.
+    If \code{tail=FALSE} no tail factor will be applied, if \code{tail=TRUE} 
+    a tail factor will be estimated via a linear extrapolation of
+    \eqn{log(chain ladder factors - 1)}, if \code{tail} is a numeric
+    value than this value will be used instead.}
+  \item{tail.se}{defines how the standard error of the tail factor is estimated. Only needed if
+    a tail factor > 1 is provided. Default is \code{NULL}. If
+    \code{tail.se} is \code{NULL}, \code{tail.se} is estimated via
+    "log-linear" regression, if \code{tail.se} is a numeric
+    value than this value will be used instead.}  
+  \item{tail.sigma}{defines how to estimate individual tail variability. Only needed if
+      a tail factor > 1 is provided.
+    Default is \code{NULL}. If \code{tail.sigma} is \code{NULL},
+    \code{tail.sigma} 
+    is estimated via "log-linear" regression, if \code{tail.sigma} is a numeric
+    value than this value will be used instead}  
+}
+\details{
+  Following Mack's 1999 paper let \eqn{C_{ik}} denote the cumulative loss amounts of origin period
+  (e.g. accident year) 
+  \eqn{i=1,\ldots,m}, with losses known for development period
+  (e.g. development year) \eqn{k \le n+1-i}.
+  In order to forecast the amounts \eqn{C_{ik}} for
+  \eqn{k > n+1-i} the Mack chain-ladder-model assumes:
+  \deqn{\mbox{CL1: }  E[ F_{ik}| C_{i1},C_{i2},\ldots,C_{ik} ] = f_k
+    \mbox{ with } F_{ik}=\frac{C_{i,k+1}}{C_{ik}}
+  }{CL1: E[ F_ik| C_i1,C_i2,...,C_ik ] = f_k with F_ik=C_{i,k+1}/C_ik}
+  
+  \deqn{\mbox{CL2: }  Var( \frac{C_{i,k+1}}{C_{ik}} | C_{i1},C_{i2},
+    \ldots,C_{ik} ) = \frac{\sigma_k^2}{w_{ik} C^\alpha_{ik}}
+  }{CL2: Var( C_{i,k+1}/C_ik | C_i1, C_i2, ... ,C_ik ) = sigma_k^2/( w_ik C^alpha_ik)
+  }
+  \deqn{\mbox{CL3: }  \{ C_{i1},\ldots,C_{in}\}, \{
+    C_{j1},\ldots,C_{jn}\},\mbox{ are independent for origin period } i
+    \neq j 
+  }{CL3: \{ C_i1, ... ,C_in\}, \{
+    C_j1, ... ,C_jn\}, are independent for origin period i != j 
+  }
+  with \eqn{w_{ik} \in [0;1]}{w_{ik} in [0;1]}, \eqn{\alpha \in \{0,1,2\}}{alpha in \{0,1,2\}}.   
+  If these assumptions are hold, the Mack-chain-ladder-model gives an
+  unbiased estimator for IBNR (Incurred But Not Reported) claims.
+  
+  The Mack-chain-ladder model can be regarded as a weighted linear regression
+  through the origin for each development period:
+  \code{lm(y ~ x  + 0, weights=w/x^(2-alpha))}, 
+  where \code{y} is the vector of claims at development period
+  \eqn{k+1} and \code{x} is  the vector of claims at development period
+  \eqn{k}. 
+
+}
+\value{
+  MackChainLadder returns a list with the following elements
+  \item{call}{matched call} 
+  \item{Triangle}{input triangle of cumulative claims}
+  \item{FullTriangle}{forecasted full triangle}
+  \item{Models}{linear regression models for each development period}
+  \item{f}{chain-ladder age-to-age factors}
+  \item{f.se}{standard errors of the chain-ladder age-to-age factors f
+    (assumption CL1)}
+  \item{F.se}{standard errors of the true chain-ladder age-to-age factors
+    \eqn{F_{ik}} (square root of the variance in assumption CL2)}
+  \item{sigma}{sigma parameter in CL2}
+  \item{Mack.ProcessRisk}{variability in the projection of future losses
+    not explained by the variability of the link ratio estimators (unexplained variation)}
+  \item{Mack.ParameterRisk}{variability in the projection of future
+    losses explained by the variability of the link-ratio estimators
+    alone (explained variation)}
+  \item{Mack.S.E}{total variability in the projection of future losses
+    by the chain ladder method; the square root of the mean square error
+    of the chain ladder estimate: \eqn{\mbox{Mack.S.E.}^2 = \mbox{Mack.ProcessRisk}^2 +
+    \mbox{Mack.ParameterRisk}^2}{Mack.S.E.^2 = Mack.ProcessRisk^2 +
+  Mack.ParameterRisk^2}}
+  \item{Total.Mack.S.E}{total variability of projected loss for all
+    origin years combined}
+  \item{weights}{weights used.}
+  \item{alpha}{alphas used.}
+  \item{tail}{tail factor used. If tail was set to TRUE the output will
+    include the linear model used to estimate the tail factor}
+}
+\references{
+\cite{Thomas Mack. Distribution-free calculation of the standard error of chain ladder reserve estimates. \emph{Astin Bulletin}. Vol. 23. No 2. 1993. pp.213:225}
+
+\cite{Thomas Mack. The standard error of chain ladder reserve estimates: Recursive calculation and inclusion of a tail factor. \emph{Astin Bulletin}. Vol. 29. No 2. 1999. pp.361:366}
+}
+\author{Markus Gesmann \email{markus.gesmann@gmail.com}}
+\note{
+  Additional references for further reading:
+  
+  \cite{England, PD and Verrall, RJ. Stochastic Claims Reserving in
+  General Insurance (with discussion), \emph{British Actuarial Journal}
+  8, III. 2002}
+
+  \cite{Murphy, Daniel M. Unbiased Loss Development
+  Factors. \emph{Proceedings of the Casualty Actuarial Society Casualty
+    Actuarial Society} - Arlington, Virginia 1994: LXXXI 154-222.}
+  
+  \cite{Barnett and Zehnwirth. Best estimates for reserves. Proceedings
+    of the CAS, LXXXVI I(167), November 2000.}  
+  
+% ~Make other sections like Warning with \section{Warning }{....} ~
+}
+\seealso{ See also \code{\link{qpaid}},  
+  \code{\link{chainladder}},  
+  \code{\link{summary.MackChainLadder}},  
+  \code{\link{plot.MackChainLadder}},  
+  \code{\link{residuals.MackChainLadder}}, 
+  \code{\link{MunichChainLadder}},
+  \code{\link{BootChainLadder}},
+}
+
+\examples{
+
+# See the Taylor/Ashe example in Mack's 1993 paper
+GenIns
+plot(GenIns)
+plot(GenIns, lattice=TRUE)
+GNI <- MackChainLadder(GenIns, est.sigma="Mack")
+GNI$f
+GNI$sigma^2
+GNI # compare to table 2 and 3 in Mack's 1993 paper
+plot(GNI)
+plot(GNI, lattice=TRUE)
+
+# Different weights
+# Using alpha=0 will use straight average age-to-age factors 
+MackChainLadder(GenIns, alpha=0)$f
+# You get the same result via:
+apply(GenIns[,-1]/GenIns[,-10],2, mean, na.rm=TRUE)
+
+# See the example in Mack's 1999 paper
+Mortgage
+plot(Mortgage)
+MRT <- MackChainLadder(Mortgage, tail=1.05, tail.sigma=71, tail.se=0.02, est.sigma="Mack")
+MRT
+plot(MRT, lattice=TRUE)
+# Table 1 in the above paper
+f <- c(11.10, 4.092, 1.708, 1.276, 1.139, 1.069, 1.026, 1.023, 1.05)
+f.se <- c(2.24, 0.517, 0.122, 0.051, 0.042, 0.023, 0.015, 0.012, 0.02)
+F.se3 <- c(7.38, 1.89, 0.357, 0.116, 0.078, 0.033, 0.015, 0.007, 0.03)
+sig <- c(1337, 988.5, 440.1, 207, 164.2, 74.60, 35.49, 16.89,71)
+# test output from MackChainLadder
+MRT$f
+MRT$f.se
+MRT$F.se[3,]
+MRT$sigma
+
+plot(MRT) # We observe trends along calendar years.
+
+# Table 2 in the above paper
+MRT$FullTriangle[,9]/1000 ## C_{i9}
+MRT$FullTriangle[,10]/1000 ## C_{i,ult}
+MRT$Mack.S.E[,9]/1000 ## s.e.(C_{i9})
+
+# Access process risk error
+MRT$Mack.ProcessRisk
+
+# Access parameter risk error
+MRT$Mack.ParameterRisk
+
+# Total risk
+MRT$Mack.S.E
+
+op <- par(mfrow=c(2,1))
+plot(with(summary(MRT)$ByOrigin, Mack.S.E/Ultimate),t="l",
+ylab="CV(Ultimate)", xlab="origin period")
+plot(summary(MRT)$ByOrigin[["CV(IBNR)"]], t="l", ylab="CV(IBNR)",
+xlab="origin period")
+par(op)
+
+  
+# This data set is discussed in many papers, e.g. England and Verrall (2000),
+# see Table 1 just there  
+RAA
+plot(RAA)
+R <- MackChainLadder(RAA)
+R
+plot(R)
+plot(R, lattice=TRUE)
+# Table 12 in England and Verrall (2000)
+R$f
+R$sigma^2
+# Table 13 in England and Verrall (2000) 
+# Please note the different indexing of sigma
+MackChainLadder(RAA, est.sigma=R$sigma[7])
+# Table 14 in England and Verrall (2000)
+MackChainLadder(RAA, est.sigma=R$sigma[8])
+ 
+# Let's investigate the Mack model in more detail
+R[["Models"]][[1]]   # Model for first development period
+summary( R[["Models"]][[1]]) # Look at the model stats
+op <- par(mfrow=c(2,2)) # plot residuals
+  plot( R[["Models"]][[1]])
+par(op)
+
+# Let's include an intercept in our model
+newModel <- update(R[["Models"]][[1]], y ~ x+1, 
+             weights=1/R[["Triangle"]][1:9,1],
+             data=data.frame(x=R[["Triangle"]][1:9,1], 
+                             y=R[["Triangle"]][1:9,2])
+              ) 
+
+# View the new model
+summary(newModel)
+op <- par(mfrow=c(2,2)) 
+  plot( newModel )
+par(op)
+
+# Change the model for dev. period one to the newModel
+R2 <- R
+R2[["Models"]][[1]] <- newModel
+predict(R2) # predict the full triangle with the new model 
+#(only the last origin year will be affected)
+
+R2[["FullTriangle"]] <-  predict(R2)
+R2[["FullTriangle"]] 
+R2   # Std. Errors have not been re-estimated!
+# Plot the result
+ 
+plot(R2, title="Changed R Model")
+
+## Suppose you have a long table with claims development by line of
+## business and would like to apply the MackChainLadder on all triangles
+## in one go.
+
+## First lets create a table similar to what you would get from a 'real' data base
+
+myList <- list("General Liabilty" = RAA/1e3,
+               "General Insurance" = GenIns/1e3,
+               "Workers Comp"=ABC/1e3,
+               "Mortgage Guarantee"=Mortgage/1e3)
+
+myData <- do.call("rbind" , lapply(names(myList),
+                            function(x) as.data.frame(myList[[x]],lob=x ,na.rm=TRUE)))
+
+## Let's plot a nice summary, but first lets normalise the origin years
+myData <- do.call("rbind",
+    by(myData, list(lob=myData$lob),
+    function(x) {org=as.numeric(as.character(x$origin))
+      x$origin <- org-min(org)+2000;x}
+    ))
+rownames(myData) <- NULL
+
+head(myData)  ## Does this look familiar? ;-)
+xyplot(value ~ dev | lob, groups=factor(origin), data=myData, t="l",
+      scales="free", auto.key=list(space="right", points=FALSE, lines=TRUE))
+
+## Lets create triangles again and apply MackChainLadder for each lob:
+
+myResults <- by(myData, list(lob=myData$lob), function(x)
+                MackChainLadder(as.triangle(x), est.sigma="Mack"))
+## That's it, lets look at the output
+myResults
+
+## Summarise all results by origin period in one data frame:
+by.origin <- function(x){
+              data.frame(lob=x,
+              origin=dimnames(myResults[[x]]$Triangle)$origin,
+              summary(myResults[[x]])$ByOrigin)
+             }  
+
+ByOrigin <-do.call("rbind", lapply(names(myResults) , by.origin))
+ByOrigin
+
+## Similar for the totals
+Totals <- do.call("rbind", lapply(names(myResults) ,
+            function(x) data.frame(LOB=x, t(summary(myResults[[x]])$Totals))))
+Totals
+
+require(lattice)
+barchart(Latest + IBNR ~ factor(origin) | lob, stack=TRUE, data=ByOrigin,
+        scale="free", auto.key=TRUE, as.table=TRUE, xlab="origin")
+
+}
+% Add one or more standard keywords, see file 'KEYWORDS' in the
+% R documentation directory.
+\keyword{ models }
