@@ -40,7 +40,7 @@ fit_gamma <- function(coeffs,design.type,n){
   return(out)
 }
 
-stochasticReserve <- function(triangle, var.power=1, link.power=0, design.type=c(1,1,0), ##link.power=0 is the log link ...
+stochasticReserve <- function(triangle, var.power=1, link.power=0, design.type=c(1,1,0), boot.param=FALSE, ##link.power=0 is the log link ...
                               cum=TRUE, exposure=TRUE, bootstrap=FALSE, nsim=1000, seed=42, proc.err=TRUE, p.optim=F,...){
   
   call <- match.call()
@@ -267,17 +267,23 @@ stochasticReserve <- function(triangle, var.power=1, link.power=0, design.type=c
       mu <- lda$yp[!is.na(lda$value)]
       #yB <- rep(1,n)
       #rn<-runif(n)
-      rn <- sample(resid(glmFit,type="pearson"),n,replace=TRUE) * sqrt(n/d.f) ##adjustment for df
-      yB= rn * sqrt(family$variance(mu)) + mu      
-      #if (!all(yB>=0) && fam!="gaussian(log)") {
-      if (!all(yB>=0)) {
-        for (i in 1:n){
-          if (yB[i]<=0) {        
-            yB[i]<-0.01
-            count.neg<-count.neg+1
+      if(boot.param) {
+        yB=rtweedie(length(mu),phi=phi,xi=var.power,mu=mu)
+      }
+      else{
+        rn <- sample(resid(glmFit,type="pearson"),n,replace=TRUE) * sqrt(n/d.f) ##adjustment for df
+        yB= rn * sqrt(family$variance(mu)) + mu      
+        #if (!all(yB>=0) && fam!="gaussian(log)") {
+        if (!all(yB>=0)) {
+          for (i in 1:n){
+            if (yB[i]<=0) {        
+              yB[i]<-0.01
+              count.neg<-count.neg+1
+            }
           }
         }
       }
+
       
       eval(parse(text=
         c(
@@ -299,14 +305,7 @@ stochasticReserve <- function(triangle, var.power=1, link.power=0, design.type=c
       lda$ypB <- exp(lda$etaB)
       
       ##ADD PROCESS ERROR
-      ###SHAPE = (E(X)^2)/VAR(X), SCALE= E(X) / SHAPE ...we need a distribution with E(X)=yB and V(X)=variance(y) and NOT variance(yB)
-      
-      #mseProcAy <-  phi * tapply(lda$yp[is.na(lda$value)],ldaOut$origin, 
-      #                        function(x) sum(family$variance(x)))
-      #mseProcTot <-  phi * sum(family$variance(lda$yp[is.na(lda$value)])) 
-      #S.E <- sqrt(c(mseProcAy,mseProcTot) + c(mseEstAy,mseEstTot))
-      
-      if (proc.err){
+     if (proc.err){
         #a = (lda$ypB[is.na(lda$value)]^2) / (phi*family$variance(lda$ypB[is.na(lda$value)]))   ##phi*family$variance(yB[i])
         #s = lda$ypB[is.na(lda$value)] / a
         lda$ypB[is.na(lda$value)]=rtweedie(length(lda$ypB[is.na(lda$value)]),xi=var.power,mu=lda$ypB[is.na(lda$value)],phi=phi)
@@ -348,9 +347,9 @@ stochasticReserve <- function(triangle, var.power=1, link.power=0, design.type=c
                         Expected.Reserve=Expected.Reserve,
                         Prediction.Error=S.E,
                         CoV=CoV,
-                        Expected.Ultimate=Ultimate+Expected.Reserve,
+                        Expected.Ultimate=Latest+Expected.Reserve,
                         GLMReserve=Reserve,
-                        sim.error=Expected.Reserve/Reserve-1,
+                        Reserve.difference=Expected.Reserve/Reserve-1,
                         Dev.To.Date=Latest/Ultimate)
   }
   else {
