@@ -265,10 +265,9 @@ stochasticReserve <- function(triangle, var.power=1, link.power=0, design.type=c
     for (b in 1:nsim){      
       #mu <- fitted(glmFit)
       mu <- lda$yp[!is.na(lda$value)]
-      # while loop to avoid negative generated incremental loss
-      yB <- rep(1,n)
-      rn<-runif(n)
-      rn <- resid(glmFit,type="pearson")[trunc(rn*n)+1] * sqrt(n/d.f) ##adjustment for df
+      #yB <- rep(1,n)
+      #rn<-runif(n)
+      rn <- sample(resid(glmFit,type="pearson"),n,replace=TRUE) * sqrt(n/d.f) ##adjustment for df
       yB= rn * sqrt(family$variance(mu)) + mu      
       #if (!all(yB>=0) && fam!="gaussian(log)") {
       if (!all(yB>=0)) {
@@ -308,9 +307,10 @@ stochasticReserve <- function(triangle, var.power=1, link.power=0, design.type=c
       #S.E <- sqrt(c(mseProcAy,mseProcTot) + c(mseEstAy,mseEstTot))
       
       if (proc.err){
-        a = (lda$ypB[is.na(lda$value)]^2) / (phi*family$variance(lda$ypB[is.na(lda$value)]))   ##phi*family$variance(yB[i])
-        s = lda$ypB[is.na(lda$value)] / a
-        lda$ypB[is.na(lda$value)]=rgamma(length(lda$ypB[is.na(lda$value)]),shape=a,scale=s)
+        #a = (lda$ypB[is.na(lda$value)]^2) / (phi*family$variance(lda$ypB[is.na(lda$value)]))   ##phi*family$variance(yB[i])
+        #s = lda$ypB[is.na(lda$value)] / a
+        lda$ypB[is.na(lda$value)]=rtweedie(length(lda$ypB[is.na(lda$value)]),xi=var.power,mu=lda$ypB[is.na(lda$value)],phi=phi)
+        #rgamma(length(lda$ypB[is.na(lda$value)]),shape=a,scale=s)
       }
       
       resMeanAyB[,b] <- tapply(lda$ypB[is.na(lda$value)],ldaOut$origin, sum)
@@ -368,9 +368,9 @@ stochasticReserve <- function(triangle, var.power=1, link.power=0, design.type=c
     FullTriangle <- incr2cum(FullTriangle)
   
   res.diag<-data.frame(unscaled=resid(glmFit,type="pearson"),
-                       unscaled.biasadj=resid(glmFit,type="pearson")/sqrt(n/d.f),
+                       unscaled.biasadj=resid(glmFit,type="pearson")*sqrt(n/d.f),
                        scaled=resid(glmFit,type="pearson")/sqrt(phi),
-                       scaled.biasadj=resid(glmFit,type="pearson")/(sqrt(phi)*sqrt(n/d.f)),
+                       scaled.biasadj=resid(glmFit,type="pearson")*sqrt(n/d.f)/(sqrt(phi)),
                        dev=ldaFit$dev,
                        origin=ldaFit$origin,
                        cy=ldaFit$cy)
