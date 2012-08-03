@@ -8,7 +8,26 @@
 
 
 library(ChainLadder) #Load Chain Ladder package
-library(tweedie) #for var.power fitting 
+library(tweedie) #for var.power fitting
+
+####ONLY FOR DEBUG########
+
+#Load toList function (to convert data.set in matrix ... to be improved?
+toList <- function(data) {
+  matr<-cbind(data[,1],data[,2])
+  for(i in 3:length(data[1,])){
+    matr<-cbind(matr,data[,i])
+  }
+  matr
+}
+
+#carico triangolo ed esposizione
+triangleC<-as.triangle(toList(read.csv("P:/Risk_MAnagement/Analysis on demand/Luigi/RExcel Reserving/dati/GTPLMED.csv",h=F)))
+expos<-read.csv("P:/Risk_MAnagement/Analysis on demand/Luigi/RExcel Reserving/dati/exp.csv",h=F)
+#attr(triangleC,"exposure")<-expos[,1]
+triangleC
+
+####ONLY FOR DEBUG######
 
 
 fit_gamma <- function(coeffs,design.type,n){
@@ -40,8 +59,9 @@ fit_gamma <- function(coeffs,design.type,n){
   return(out)
 }
 
-stochasticReserve <- function(triangle, var.power=1, link.power=0, design.type=c(1,1,0), boot.param=FALSE, ##link.power=0 is the log link ...
-                              cum=TRUE, exposure=TRUE, bootstrap=FALSE, nsim=1000, seed=42, proc.err=TRUE, p.optim=F,...){
+
+stochasticReserve <- function(triangle, var.power=1, link.power=0, design.type=c(1,1,0), ##link.power=0 is the log link ...
+                              cum=TRUE, exposure=TRUE, bootstrap=0, boot.adj=0, nsim=1000, proc.err=TRUE, p.optim=F,...){
   
   call <- match.call()
   if (!("triangle") %in% class(triangle))
@@ -62,15 +82,12 @@ stochasticReserve <- function(triangle, var.power=1, link.power=0, design.type=c
   lda <-  as.data.frame(tr.incr)
   lda$offset <- if (is.null(attr(tr.incr,"exposure")))
     rep(0,nrow(lda)) else 
-      #family$linkfun(rep(attr(tr.incr,"exposure"),    #BUG FIX
-      #                   as.numeric(table(lda$dev))))
       family$linkfun(attr(tr.incr,"exposure")[lda$origin])
   
   #parameter fix for better intrepretation of results
   lda$origin<-lda$origin-1
   lda$dev<-lda$dev-1
   lda$cy <- lda$origin + lda$dev
-  #pippo
   
   ######################################
   ####DESIGN MATRIX CALCULATION#####
@@ -81,10 +98,10 @@ stochasticReserve <- function(triangle, var.power=1, link.power=0, design.type=c
   design.string<-" "
   temp<-rep(1,length(lda$origin))
   
-  if (design.type[1] %in% 0){
+  if (design.type[1] == 0){
     ay<-matrix(0,nrow= length(lda$origin),ncol=1)
   }
-  if (design.type[1] %in% 1){
+  if (design.type[1] == 1){
     
     design.string=paste(design.string,"factor(origin)")
     
@@ -94,7 +111,7 @@ stochasticReserve <- function(triangle, var.power=1, link.power=0, design.type=c
     }
     ay<-cbind(temp,ay)       
   }
-  if (design.type[1] %in% 2){
+  if (design.type[1] == 2){
     
     design.string=paste(design.string,"origin")
     
@@ -106,10 +123,10 @@ stochasticReserve <- function(triangle, var.power=1, link.power=0, design.type=c
   }
   
   #  design matrix per DY
-  if (design.type[2] %in% 0){
+  if (design.type[2] == 0){
     dy<-matrix(0,nrow= length(lda$dev),ncol=1)
   }
-  if (design.type[2] %in% 1){
+  if (design.type[2] == 1){
     
     if (design.type[1]==0) {
       design.string=paste(design.string,"factor(dev)")
@@ -125,7 +142,7 @@ stochasticReserve <- function(triangle, var.power=1, link.power=0, design.type=c
     dy<-cbind(temp,dy)
     
   }
-  if (design.type[2] %in% 2){
+  if (design.type[2] == 2){
     
     if (design.type[1]==0) {
       design.string=paste(design.string,"dev") 
@@ -142,10 +159,10 @@ stochasticReserve <- function(triangle, var.power=1, link.power=0, design.type=c
   }
   
   #  design matrix per CY
-  if (design.type[3] %in% 0){
+  if (design.type[3] == 0){
     cy<-matrix(0,nrow= length(lda$cy),ncol=1)
   }
-  if (design.type[3] %in% 1){
+  if (design.type[3] == 1){
     
     if (design.type[1]==0 && design.type[2]==0) {
       design.string=paste(design.string,"factor(cy)")
@@ -161,7 +178,7 @@ stochasticReserve <- function(triangle, var.power=1, link.power=0, design.type=c
     cy<-cbind(temp,cy)
     
   }
-  if (design.type[3] %in% 2){
+  if (design.type[3] == 2){
     
     if (design.type[1]==0 && design.type[2]==0) {
       design.string=paste(design.string,"cy")
@@ -207,28 +224,23 @@ stochasticReserve <- function(triangle, var.power=1, link.power=0, design.type=c
   )
   )  
   
-  
-  
   ################################
   ## calculate reserve 
   ################################
+  
   # prediction for each cell
   
   coeffs <- glmFit$coefficients
   temp_y<-data.frame(gamma_y<-c(0))
   
-  # an extrapultion of interaction factors has to be made for the future CY
+  # an extrapultion of future CY factors has to be made for the future CY
   if (design.type[3]==1) {
     temp_y<-fit_gamma(coeffs,design.type,n=max(lda$origin)) ## NOTE: 0 included!!! so actually we have (n+1) values!!
     coeffs<-temp_y$coeffs
   }
-  n <- nrow(ldaFit) ##n° of data points n
-  d.f<- df.residual(glmFit) ##n° of data points - parameters (n-p)
-  ######
-  ######
-  #d.f <- ndata-length(coeffs) ##QUESTION: should be included also the future estimated gamma or not?!?
-  ######
-  ######
+  n <- nrow(ldaFit) ## n° of data points (n)
+  d.f<- df.residual(glmFit) ## n° of data points - parameters (n-p)
+  bias <- sqrt(n/d.f)
   
   # dispersion
   #phi <- sum(resid(glmFit,type="pearson")^2)/d.f
@@ -254,37 +266,50 @@ stochasticReserve <- function(triangle, var.power=1, link.power=0, design.type=c
   Latest <- c(Latest,sum(Latest))
   Ultimate <- Latest + Reserve
   
-  
   count.neg<-0
-  
-  if (bootstrap){
+  ###BOOTSTRAP CYCLE###
+  if (bootstrap!=0){ 
     resMeanAyB <- matrix(0,length(resMeanAy),nsim)
     resMeanTotB <- rep(0,nsim)
     
-    set.seed(seed)
     # loop nsim times 
     for (b in 1:nsim){      
-      #mu <- fitted(glmFit)
       mu <- lda$yp[!is.na(lda$value)]
-      #yB <- rep(1,n)
-      #rn<-runif(n)
-      if(boot.param) {
+      
+      ### PARAMETRIC BOOTSTRAP ###
+      if(bootstrap==1) { 
         yB=rtweedie(length(mu),phi=phi,xi=var.power,mu=mu)
       }
+      
+      ### SEMI-PARAMETRIC BOOTSTRAP ###
       else{
-        rn <- sample(resid(glmFit,type="pearson"),n,replace=TRUE) * sqrt(n/d.f) ##adjustment for df
-        yB= rn * sqrt(family$variance(mu)) + mu      
-        #if (!all(yB>=0) && fam!="gaussian(log)") {
-        if (!all(yB>=0)) {
-          for (i in 1:n){
-            if (yB[i]<=0) {        
-              yB[i]<-0.01
-              count.neg<-count.neg+1
+        ### WHILE CYCLE until triangle > 0 ... WARNING: COULD BE TIME CONSUMING!!!!
+        if(boot.adj==0){
+          ybad <- 1 
+          while (ybad){
+            rn <- bias * sample(resid(glmFit, type = "pearson"), n, replace = TRUE)
+            yB <- rn * sqrt(family$variance(mu)) + mu
+            if (all(yB >= 0) || (!is.null(var.power) && var.power == 0))
+              ybad <- 0  # Normal 
+          }
+          
+        }
+        
+        ### OVERWRITE NEGATIVE VALUES with 0.01 ... WARNING: COULD LEAD TO LOWER UNCERTAINTY!!
+        else{
+          rn <- bias * sample(resid(glmFit,type="pearson"), n, replace=TRUE) ##adjustment for df
+          yB <- rn * sqrt(family$variance(mu)) + mu      
+          if (!all(yB>=0) || (!is.null(var.power) && var.power != 0)) {
+            for (i in 1:n){
+              if (yB[i]<=0) {        
+                yB[i]<-0.01
+                count.neg<-count.neg+1
+              }
             }
           }
         }
       }
-
+      
       
       eval(parse(text=
         c(
@@ -306,10 +331,12 @@ stochasticReserve <- function(triangle, var.power=1, link.power=0, design.type=c
       lda$ypB <- exp(lda$etaB)
       
       ##ADD PROCESS ERROR
-     if (proc.err){
+      if (proc.err){
+        lda$ypB[is.na(lda$value)]=rtweedie(length(lda$ypB[is.na(lda$value)]),xi=var.power,mu=lda$ypB[is.na(lda$value)],phi=phi)
+        
+        ### OLD GAMMA APPROACH ###
         #a = (lda$ypB[is.na(lda$value)]^2) / (phi*family$variance(lda$ypB[is.na(lda$value)]))   ##phi*family$variance(yB[i])
         #s = lda$ypB[is.na(lda$value)] / a
-        lda$ypB[is.na(lda$value)]=rtweedie(length(lda$ypB[is.na(lda$value)]),xi=var.power,mu=lda$ypB[is.na(lda$value)],phi=phi)
         #rgamma(length(lda$ypB[is.na(lda$value)]),shape=a,scale=s)
       }
       
@@ -318,10 +345,8 @@ stochasticReserve <- function(triangle, var.power=1, link.power=0, design.type=c
       
     }
     # compute estimation variance, adjusted by df 
-    #mseEstAy <- nrow(ldaFit)/df.residual(glmFit) * apply(resMeanAyB,1,var)
-    #mseEstTot <- nrow(ldaFit)/df.residual(glmFit) * var(resMeanTotB)
     
-    ##MOD => the adjustment for DF is included directly in residuals (see England(2002) Addendum)
+    ##the adjustment for DF is included directly in residuals (see England(2002) Addendum) or in parametric bootstrap
     mseEstAy <- apply(resMeanAyB,1,var)
     mseEstTot <- var(resMeanTotB)
     
@@ -343,7 +368,7 @@ stochasticReserve <- function(triangle, var.power=1, link.power=0, design.type=c
   
   
   #WRITING REPORT
-  if (bootstrap) {
+  if (bootstrap!=0) {
     resDf <- data.frame(Latest=Latest, 
                         Expected.Reserve=Expected.Reserve,
                         Prediction.Error=S.E,
@@ -368,9 +393,9 @@ stochasticReserve <- function(triangle, var.power=1, link.power=0, design.type=c
     FullTriangle <- incr2cum(FullTriangle)
   
   res.diag<-data.frame(unscaled=resid(glmFit,type="pearson"),
-                       unscaled.biasadj=resid(glmFit,type="pearson")*sqrt(n/d.f),
+                       unscaled.biasadj=resid(glmFit,type="pearson")*bias,
                        scaled=resid(glmFit,type="pearson")/sqrt(phi),
-                       scaled.biasadj=resid(glmFit,type="pearson")*sqrt(n/d.f)/(sqrt(phi)),
+                       scaled.biasadj=resid(glmFit,type="pearson")*bias/sqrt(phi),
                        dev=ldaFit$dev,
                        origin=ldaFit$origin,
                        cy=ldaFit$cy)
@@ -382,7 +407,8 @@ stochasticReserve <- function(triangle, var.power=1, link.power=0, design.type=c
                 scale=phi,
                 gamma_y=temp_y$gamma_y,
                 res.diag=res.diag,
-                perc.neg=perc.neg), 
+                if(bootstrap==2 && boot.adj==1) {perc.neg=perc.neg}
+                ), 
            
            glmFit[!(names(glmFit) %in% c("call"))]
   )
@@ -410,3 +436,8 @@ stochasticReserve <- function(triangle, var.power=1, link.power=0, design.type=c
   class(out) <- "glm"                     
   return(out)  
 }
+
+
+###DEBUG ONLY####
+set.seed(42)
+a<-stochasticReserve(triangleC,design.type=c(1,1,0),bootstrap=T,nsim=10000,boot.param=TRUE,proc.err=FALSE)
