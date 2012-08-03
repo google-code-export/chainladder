@@ -70,6 +70,7 @@ stochasticReserve <- function(triangle, var.power=1, link.power=0, design.type=c
   lda$origin<-lda$origin-1
   lda$dev<-lda$dev-1
   lda$cy <- lda$origin + lda$dev
+  #pippo
   
   ######################################
   ####DESIGN MATRIX CALCULATION#####
