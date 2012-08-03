@@ -277,8 +277,13 @@ stochasticReserve <- function(triangle, var.power=1, link.power=0, design.type=c
       mu <- lda$yp[!is.na(lda$value)]
       
       ### PARAMETRIC BOOTSTRAP ###
-      if(bootstrap==1) { 
-        yB=rtweedie(length(mu),phi=phi,xi=var.power,mu=mu)
+      if(bootstrap==1) {
+        if(var.power!=0){ ### rtweedie doesn't support var.power = 0
+          yB=rtweedie(n,phi=phi,xi=var.power,mu=mu) 
+        }
+        else{
+          yB=rnorm(n,mean=mu,sd=sqrt(phi)) #### KNOWN ISSUE: Error in glm.fit with negative values .. why?
+        }
       }
       
       ### SEMI-PARAMETRIC BOOTSTRAP ###
@@ -286,10 +291,15 @@ stochasticReserve <- function(triangle, var.power=1, link.power=0, design.type=c
         ### WHILE CYCLE until triangle > 0 ... WARNING: COULD BE TIME CONSUMING!!!!
         if(boot.adj==0){
           ybad <- 1 
+          tries=0
           while (ybad){
+            tries = tries + 1
+            if (tries>100){stop("Too many negative bootstrapped values!!")} ### Added to exit code, otherwise "infinite" WHILE cycle could happen!!
+            
             rn <- bias * sample(resid(glmFit, type = "pearson"), n, replace = TRUE)
             yB <- rn * sqrt(family$variance(mu)) + mu
-            if (all(yB >= 0) || (!is.null(var.power) && var.power == 0))
+            
+            if (all(yB >= 0) || (!is.null(var.power) && var.power == 0)) #### KNOWN ISSUE: Error in glm.fit with negative values .. why?
               ybad <- 0  # Normal 
           }
           
@@ -332,7 +342,15 @@ stochasticReserve <- function(triangle, var.power=1, link.power=0, design.type=c
       
       ##ADD PROCESS ERROR
       if (proc.err){
-        lda$ypB[is.na(lda$value)]=rtweedie(length(lda$ypB[is.na(lda$value)]),xi=var.power,mu=lda$ypB[is.na(lda$value)],phi=phi)
+        n.fut = length(lda$ypB[is.na(lda$value)])
+        mu.fut= lda$ypB[is.na(lda$value)]
+        if (var.power!=0){
+          lda$ypB[is.na(lda$value)]=rtweedie(n.fut,xi=var.power,mu=mu.fut,phi=phi)  
+        }
+        else{
+          lda$ypB[is.na(lda$value)]=rnorm(n.fut,mean=mu.fut,sd=sqrt(phi))
+        }
+        
         
         ### OLD GAMMA APPROACH ###
         #a = (lda$ypB[is.na(lda$value)]^2) / (phi*family$variance(lda$ypB[is.na(lda$value)]))   ##phi*family$variance(yB[i])
@@ -440,4 +458,7 @@ stochasticReserve <- function(triangle, var.power=1, link.power=0, design.type=c
 
 ###DEBUG ONLY####
 set.seed(42)
-a<-stochasticReserve(triangleC,design.type=c(1,1,0),bootstrap=T,nsim=10000,boot.param=TRUE,proc.err=FALSE)
+a<-stochasticReserve(triangleC,design.type=c(1,1,0),bootstrap=0,p.optim=TRUE)
+
+b<-stochasticReserve(triangleC,design.type=c(1,1,0),bootstrap=1,nsim=1000,var.power=1.6)
+b<-stochasticReserve(triangleC,design.type=c(1,1,0),bootstrap=2,boot.adj=1,nsim=1000,var.power=1.6)
