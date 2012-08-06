@@ -22,9 +22,9 @@ toList <- function(data) {
 }
 
 #carico triangolo ed esposizione
-triangleC<-as.triangle(toList(read.csv("P:/Risk_MAnagement/Analysis on demand/Luigi/RExcel Reserving/dati/GTPLMED.csv",h=F)))
+triangleC<-as.triangle(toList(read.csv("P:/Risk_MAnagement/Analysis on demand/Luigi/RExcel Reserving/dati/triaC.csv",h=F)))
 expos<-read.csv("P:/Risk_MAnagement/Analysis on demand/Luigi/RExcel Reserving/dati/exp.csv",h=F)
-#attr(triangleC,"exposure")<-expos[,1]
+attr(triangleC,"exposure")<-expos[,1]
 triangleC
 
 ####ONLY FOR DEBUG######
@@ -49,8 +49,7 @@ fit_gamma <- function(coeffs,design.type,n){
   for (k in 1:(2*n)){
     if (!is.na(coeffs[pos.gamma+k-1])){
       gamma_y[k]<-coeffs[pos.gamma+k-1]
-    }
-    else {
+    } else {
       gamma_y[k]<-new$y[k]
     }    
   }
@@ -60,7 +59,7 @@ fit_gamma <- function(coeffs,design.type,n){
 }
 
 
-stochasticReserve <- function(triangle, var.power=1, link.power=0, design.type=c(1,1,0), ##link.power=0 is the log link ...
+stochasticReserve <- function(triangle, var.power=1, link.power=0, design.type=c(1,1,0), view_1yr=FALSE,##link.power=0 is the log link ...
                               cum=TRUE, exposure=FALSE, bootstrap=0, boot.adj=0, nsim=1000, proc.err=TRUE, p.optim=F,...){
   
   call <- match.call()
@@ -85,7 +84,7 @@ stochasticReserve <- function(triangle, var.power=1, link.power=0, design.type=c
       family$linkfun(attr(tr.incr,"exposure")[lda$origin])
   
   #parameter fix for better intrepretation of results
-  lda$origin<-lda$origin-1
+  #lda$origin<-lda$origin-1 ## NOT NECESSARY
   lda$dev<-lda$dev-1
   lda$cy <- lda$origin + lda$dev
   
@@ -96,18 +95,22 @@ stochasticReserve <- function(triangle, var.power=1, link.power=0, design.type=c
   
   #  design matrix per AY
   design.string<-" "
-  temp<-rep(1,length(lda$origin))
+  m_dev=max(lda["dev"]) ##max_dev (IT MUST START from 0!!!)
+  m_cy=2*m_dev
+  m=nrow(lda)
+  
+  temp<-rep(1,m)
   
   if (design.type[1] == 0){
-    ay<-matrix(0,nrow= length(lda$origin),ncol=1)
+    ay<-matrix(0,nrow=m,ncol=1)
   }
   if (design.type[1] == 1){
     
     design.string=paste(design.string,"factor(origin)")
     
-    ay<-matrix(0,nrow= length(lda$origin), ncol=max(lda["origin"]))  #ay<-matrix(0,nrow= length(lda$origin), ncol=max(lda["origin"])+1)
-    for(r in 1:length(lda$origin)){
-      if (lda$origin[r]!=0) {ay[r,lda$origin[r]]=1}
+    ay<-matrix(0,nrow=m, ncol=m_dev)
+    for(r in 1:m){
+      if (lda$origin[r]!=1) {ay[r,lda$origin[r]-1]=1}
     }
     ay<-cbind(temp,ay)       
   }
@@ -115,8 +118,8 @@ stochasticReserve <- function(triangle, var.power=1, link.power=0, design.type=c
     
     design.string=paste(design.string,"origin")
     
-    ay<-matrix(0,nrow= length(lda$origin), ncol=1)
-    for(r in 1:length(lda$origin)){
+    ay<-matrix(0,nrow=m, ncol=1)
+    for(r in 1:m){
       ay[r,1]=lda$origin[r]
     }
     ay<-cbind(temp,ay)
@@ -124,20 +127,19 @@ stochasticReserve <- function(triangle, var.power=1, link.power=0, design.type=c
   
   #  design matrix per DY
   if (design.type[2] == 0){
-    dy<-matrix(0,nrow= length(lda$dev),ncol=1)
+    dy<-matrix(0,nrow=m,ncol=1)
   }
   if (design.type[2] == 1){
     
     if (design.type[1]==0) {
       design.string=paste(design.string,"factor(dev)")
-    } 
-    else {
+    } else {
       design.string=paste(design.string,"+ factor(dev)")
     }
     
-    dy<-matrix(0,nrow= length(lda$dev), ncol=max(lda["dev"]))
-    for(r in 1:length(lda$dev)){
-      if (lda$dev[r]!=0) {dy[r,lda$dev[r]]=1}
+    dy<-matrix(0,nrow=m, ncol=m_dev)
+    for(r in 1:m){
+      if (lda$dev[r]!=0) { dy[r,lda$dev[r]]=1 }
     }
     dy<-cbind(temp,dy)
     
@@ -146,13 +148,12 @@ stochasticReserve <- function(triangle, var.power=1, link.power=0, design.type=c
     
     if (design.type[1]==0) {
       design.string=paste(design.string,"dev") 
-    }
-    else {
+    } else {
       design.string=paste(design.string,"+ dev")
     }
     
-    dy<-matrix(0,nrow= length(lda$dev), ncol=1)
-    for(r in 1:length(lda$dev)){
+    dy<-matrix(0,nrow=m, ncol=1)
+    for(r in 1:m){
       dy[r,1]=lda$dev[r]
     }
     dy<-cbind(temp,dy)
@@ -160,20 +161,19 @@ stochasticReserve <- function(triangle, var.power=1, link.power=0, design.type=c
   
   #  design matrix per CY
   if (design.type[3] == 0){
-    cy<-matrix(0,nrow= length(lda$cy),ncol=1)
+    cy<-matrix(0,nrow=m,ncol=1)
   }
   if (design.type[3] == 1){
     
     if (design.type[1]==0 && design.type[2]==0) {
       design.string=paste(design.string,"factor(cy)")
-    }
-    else {
+    } else {
       design.string=paste(design.string,"+ factor(cy)")
     }
     
-    cy<-matrix(0,nrow= length(lda$cy), ncol=max(lda["cy"]))
-    for(r in 1:length(lda$cy)){
-      if (lda$cy[r]!=0) {cy[r,lda$cy[r]]=1}
+    cy<-matrix(0,nrow=m, ncol=2*m_dev)
+    for(r in 1:m) {
+      if (lda$cy[r]!=1) {cy[r,lda$cy[r]-1]=1}
     }
     cy<-cbind(temp,cy)
     
@@ -182,13 +182,12 @@ stochasticReserve <- function(triangle, var.power=1, link.power=0, design.type=c
     
     if (design.type[1]==0 && design.type[2]==0) {
       design.string=paste(design.string,"cy")
-    }
-    else {
+    } else {
       design.string=paste(design.string,"+ cy")
     }
     
-    cy<-matrix(0,nrow= length(lda$cy), ncol=1)
-    for(r in 1:length(lda$cy)){
+    cy<-matrix(0,nrow=m, ncol=1)
+    for(r in 1:m){
       cy[r,1]=lda$cy[r]
     }
     cy<-cbind(temp,cy)
@@ -210,10 +209,9 @@ stochasticReserve <- function(triangle, var.power=1, link.power=0, design.type=c
   #glmFit<-glm(value~factor(origin)+factor(dev),family=quasipoisson(log),data=ldaFit)
   
   if (exposure){
-    glmstring<-paste(design.string,", family = family, data=ldaFit,offset=offset,...")
-  }
-  else{
-    glmstring<-paste(design.string,", family = family, data=ldaFit,...")
+    glmstring<-paste(design.string,", family = family, data=ldaFit,offset=offset")
+  } else {
+    glmstring<-paste(design.string,", family = family, data=ldaFit")
   }
   
   eval(parse(text=
@@ -235,7 +233,7 @@ stochasticReserve <- function(triangle, var.power=1, link.power=0, design.type=c
   
   # an extrapultion of future CY factors has to be made for the future CY
   if (design.type[3]==1) {
-    temp_y<-fit_gamma(coeffs,design.type,n=max(lda$origin)) ## NOTE: 0 included!!! so actually we have (n+1) values!!
+    temp_y<-fit_gamma(coeffs,design.type,n=m_dev) ## NOTE: 0 included!!! so actually we have (n+1) values!!
     coeffs<-temp_y$coeffs
   }
   n <- nrow(ldaFit) ## n° of data points (n)
@@ -253,18 +251,13 @@ stochasticReserve <- function(triangle, var.power=1, link.power=0, design.type=c
   # sum to get reserve by year
   
   resMeanAy <- tapply(lda$yp[is.na(lda$value)],ldaOut$origin, sum)
-  resMeanTot <- sum(resMeanAy)
-  
-  ################################
-  ## calculate prediction err 
-  ################################                
-  
-  # process variance              
+  resMeanTot <- sum(resMeanAy)       
   
   Reserve <- round(c(resMeanAy,resMeanTot))
   Latest <- getLatestCumulative(incr2cum(tr.incr))[-1L]
   Latest <- c(Latest,sum(Latest))
   Ultimate <- Latest + Reserve
+  
   
   count.neg<-0
   ###BOOTSTRAP CYCLE###
@@ -272,7 +265,13 @@ stochasticReserve <- function(triangle, var.power=1, link.power=0, design.type=c
     resMeanAyB <- matrix(0,length(resMeanAy),nsim)
     resMeanTotB <- rep(0,nsim)
     
-    # loop nsim times 
+    if (view_1yr) { ##CREATE 1yr matrix
+      resMeanAyB_1yr <- matrix(0,length(resMeanAy),nsim)
+      resMeanTotB_1yr <- rep(0,nsim)
+      
+    }
+    
+    # loop nsim times
     for (b in 1:nsim){      
       mu <- lda$yp[!is.na(lda$value)]
       
@@ -280,21 +279,16 @@ stochasticReserve <- function(triangle, var.power=1, link.power=0, design.type=c
       if(bootstrap==1) {
         if(var.power!=0){ ### rtweedie doesn't support var.power = 0
           yB=rtweedie(n,phi=phi,xi=var.power,mu=mu) 
-        }
-        else{
+        } else{
           yB=rnorm(n,mean=mu,sd=sqrt(phi)) #### KNOWN ISSUE: Error in glm.fit with negative values .. why?
         }
-      }
-      
-      ### SEMI-PARAMETRIC BOOTSTRAP ###
-      else{
-        ### WHILE CYCLE until triangle > 0 ... WARNING: COULD BE TIME CONSUMING!!!!
-        if(boot.adj==0){
+      } else { ### SEMI-PARAMETRIC BOOTSTRAP ###      
+        if(boot.adj==0){  ### WHILE CYCLE until triangle > 0 ... WARNING: COULD BE TIME CONSUMING!!!!
           ybad <- 1 
           tries=0
           while (ybad){
             tries = tries + 1
-            if (tries>100){stop("Too many negative bootstrapped values!!")} ### Added to exit code, otherwise "infinite" WHILE cycle could happen!!
+            if (tries>100) {stop("Too many negative bootstrapped values!!")} ### Added to exit code, otherwise "infinite" WHILE cycle could happen!!
             
             rn <- bias * sample(resid(glmFit, type = "pearson"), n, replace = TRUE)
             yB <- rn * sqrt(family$variance(mu)) + mu
@@ -303,10 +297,7 @@ stochasticReserve <- function(triangle, var.power=1, link.power=0, design.type=c
               ybad <- 0  # Normal 
           }
           
-        }
-        
-        ### OVERWRITE NEGATIVE VALUES with 0.01 ... WARNING: COULD LEAD TO LOWER UNCERTAINTY!!
-        else{
+        } else{ ### OVERWRITE NEGATIVE VALUES with 0.01 ... WARNING: COULD LEAD TO LOWER UNCERTAINTY!!
           rn <- bias * sample(resid(glmFit,type="pearson"), n, replace=TRUE) ##adjustment for df
           yB <- rn * sqrt(family$variance(mu)) + mu      
           if (!all(yB>=0) || (!is.null(var.power) && var.power != 0)) {
@@ -332,7 +323,7 @@ stochasticReserve <- function(triangle, var.power=1, link.power=0, design.type=c
       coeffsB <- glmFitB$coefficients
       
       if (design.type[3]==1) {
-        temp_yB<-fit_gamma(coeffsB,design.type,n=max(lda$origin)) ## NOTE: 0 included!!! so actually we have (n+1) values!!
+        temp_yB<-fit_gamma(coeffsB,design.type,n=m_dev) ## NOTE: DEV must start with 0!!!
         coeffsB<-temp_yB$coeffs
       }
       
@@ -346,20 +337,54 @@ stochasticReserve <- function(triangle, var.power=1, link.power=0, design.type=c
         mu.fut= lda$ypB[is.na(lda$value)]
         if (var.power!=0){
           lda$ypB[is.na(lda$value)]=rtweedie(n.fut,xi=var.power,mu=mu.fut,phi=phi)  
-        }
-        else{
+        } else {
           lda$ypB[is.na(lda$value)]=rnorm(n.fut,mean=mu.fut,sd=sqrt(phi))
         }
-        
-        
-        ### OLD GAMMA APPROACH ###
-        #a = (lda$ypB[is.na(lda$value)]^2) / (phi*family$variance(lda$ypB[is.na(lda$value)]))   ##phi*family$variance(yB[i])
-        #s = lda$ypB[is.na(lda$value)] / a
-        #rgamma(length(lda$ypB[is.na(lda$value)]),shape=a,scale=s)
       }
+            
       
       resMeanAyB[,b] <- tapply(lda$ypB[is.na(lda$value)],ldaOut$origin, sum)
-      resMeanTotB[b] <- sum(resMeanAyB[,b])     
+      resMeanTotB[b] <- sum(resMeanAyB[,b])
+      
+      ### 1yr VIEW Calculation ###
+      if (view_1yr) {
+        
+        lda$year1=lda$value  ## COPY ALL THE KNOWN VALUES
+        next_y <- max(lda$origin)+1 ##NEXT DIAGONAL is for CY = max(origin)+1
+        lda$year1[lda$cy==next_y]=lda$ypB[lda$cy==next_y]  ##COPY NEXT DIAGONAL
+        ldaFit_1yr = subset(lda,!is.na(lda$year1))
+        
+        if (exposure){
+          glmstring_1yr<-paste(design.string,", family = family, data=ldaFit_1yr,offset=offset")
+        } else{
+          glmstring_1yr<-paste(design.string,", family = family, data=ldaFit_1yr")
+        }
+        
+        eval(parse(text=
+          c(
+            "glmFit1yr<-glm(year1~",glmstring_1yr,
+            ")"
+          )
+        )
+        )
+        
+        coeffs1yr <- glmFit1yr$coefficients
+        
+        if (design.type[3]==1) {
+          temp_1yr<-fit_gamma(coeffs1yr,design.type,n=m_dev) ## NOTE: 0 included!!! so actually we have (n+1) values!!
+          coeffs1yr<-temp_1yr$coeffs
+        }
+        
+        lda$be1yr <- design.matrix %*% coeffs1yr ##ETA
+        lda$be1yr <- lda$be1yr + lda$offset        ##ETA + OFFSET
+        lda$be1yr <- exp(lda$be1yr)              ##Best Estimate 1yr, for all the values ..
+        
+        lda$year1[is.na(lda$year1)]=lda$be1yr[is.na(lda$year1)]
+        
+        resMeanAyB_1yr[,b] <- tapply(lda$year1[is.na(lda$value)],ldaOut$origin, sum)
+        resMeanTotB_1yr[b] <- sum(resMeanAyB_1yr[,b])        
+      }
+
       
     }
     # compute estimation variance, adjusted by df 
@@ -376,6 +401,23 @@ stochasticReserve <- function(triangle, var.power=1, link.power=0, design.type=c
     S.E <- sqrt(c(mseEstAy,mseEstTot))
     CoV <- S.E / Expected.Reserve
     
+    if (view_1yr) {
+      mseEstAy_1yr <- apply(resMeanAyB_1yr,1,var)
+      mseEstTot_1yr <- var(resMeanTotB_1yr)
+      
+      avgResAy_1yr <- apply(resMeanAyB_1yr,1,mean)
+      avgResTot_1yr <- mean(resMeanTotB_1yr)
+      
+      Expected.Reserve_1yr <- round(c(avgResAy_1yr,avgResTot_1yr))
+      
+      S.E_1yr <- sqrt(c(mseEstAy_1yr,mseEstTot_1yr))
+      CoV_1yr <- S.E_1yr / Expected.Reserve_1yr
+      
+      Emergence.Pattern <- S.E_1yr/S.E
+    }
+    
+
+    
     # percentage of negative values modified
     
   }
@@ -387,16 +429,29 @@ stochasticReserve <- function(triangle, var.power=1, link.power=0, design.type=c
   
   #WRITING REPORT
   if (bootstrap!=0) {
-    resDf <- data.frame(Latest=Latest, 
-                        Expected.Reserve=Expected.Reserve,
-                        Prediction.Error=S.E,
-                        CoV=CoV,
-                        Expected.Ultimate=Latest+Expected.Reserve,
-                        GLMReserve=Reserve,
-                        Reserve.difference=Expected.Reserve/Reserve-1,
-                        Dev.To.Date=Latest/Ultimate)
-  }
-  else {
+    if (view_1yr) {
+      resDf <- data.frame(Latest=Latest, 
+                          Expected.Reserve=Expected.Reserve,
+                          Prediction.Error=S.E,
+                          CoV=CoV,
+                          Expected.Ultimate=Latest+Expected.Reserve,
+                          GLMReserve=Reserve,
+                          Expected.Reserve_1yr=Expected.Reserve_1yr,
+                          Prediction.Error_1yr=S.E_1yr,
+                          Emergence.Pattern = Emergence.Pattern)                     
+    } else {
+      resDf <- data.frame(Latest=Latest, 
+                          Expected.Reserve=Expected.Reserve,
+                          Prediction.Error=S.E,
+                          CoV=CoV,
+                          Expected.Ultimate=Latest+Expected.Reserve,
+                          GLMReserve=Reserve,
+                          Reserve.difference=Expected.Reserve/Reserve-1,
+                          Dev.To.Date=Latest/Ultimate)
+    }
+    
+                  
+  } else {
     resDf <- data.frame(Latest=Latest, Reserve=Reserve,
                         Dev.To.Date=Latest/Ultimate,
                         Ultimate=Ultimate)
@@ -425,8 +480,9 @@ stochasticReserve <- function(triangle, var.power=1, link.power=0, design.type=c
                 scale=phi,
                 gamma_y=temp_y$gamma_y,
                 res.diag=res.diag,
-                if(bootstrap==2 && boot.adj==1) {perc.neg=perc.neg}
-                ), 
+                #if(bootstrap==2 && boot.adj==1) {perc.neg=perc.neg}
+                sims_1yr=resMeanAyB_1yr,
+                sims=resMeanAyB), 
            
            glmFit[!(names(glmFit) %in% c("call"))]
   )
@@ -437,8 +493,7 @@ stochasticReserve <- function(triangle, var.power=1, link.power=0, design.type=c
     
     if (exposure){
       glmstring<-paste(design.string,", family = family, data=ldaFit,p.vec=c(seq(0, 2, by=0.1),3),do.plot=T,offset=offset")
-    }
-    else{
+    } else {
       glmstring<-paste(design.string,", family = family, data=ldaFit,p.vec=c(seq(0, 2, by=0.1),3),do.plot=T")
     }
     eval(parse(text=
@@ -462,3 +517,7 @@ a<-stochasticReserve(triangleC,design.type=c(1,1,0),bootstrap=0,p.optim=TRUE)
 
 b<-stochasticReserve(triangleC,design.type=c(1,1,0),bootstrap=1,nsim=1000,var.power=1.6)
 b<-stochasticReserve(triangleC,design.type=c(1,1,0),bootstrap=2,boot.adj=1,nsim=1000,var.power=1.6)
+a<-stochasticReserve(triangleC,design.type=c(1,1,0),bootstrap=1,view_1yr=TRUE)
+
+a<-stochasticReserve(triangleC,design.type=c(0,1,1),bootstrap=1,view_1yr=TRUE)
+
