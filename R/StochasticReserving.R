@@ -11,6 +11,7 @@ library(ChainLadder) #Load Chain Ladder package
 library(tweedie) #for var.power fitting
 
 ####ONLY FOR DEBUG########
+########START#############
 
 #Load toList function (to convert data.set in matrix ... to be improved?
 toList <- function(data) {
@@ -22,12 +23,13 @@ toList <- function(data) {
 }
 
 #carico triangolo ed esposizione
-triangleC<-as.triangle(toList(read.csv("P:/Risk_MAnagement/Analysis on demand/Luigi/RExcel Reserving/dati/triaC.csv",h=F)))
-expos<-read.csv("P:/Risk_MAnagement/Analysis on demand/Luigi/RExcel Reserving/dati/exp.csv",h=F)
-attr(triangleC,"exposure")<-expos[,1]
+triangleC<-as.triangle(toList(read.csv("P:/Risk_MAnagement/Analysis on demand/Luigi/RExcel Reserving/dati/PROPERTY.csv",h=F)))
+#expos<-read.csv("P:/Risk_MAnagement/Analysis on demand/Luigi/RExcel Reserving/dati/exp.csv",h=F)
+#attr(triangleC,"exposure")<-expos[,1]
 triangleC
 
-####ONLY FOR DEBUG######
+####ONLY FOR DEBUG########
+########END###############
 
 
 fit_gamma <- function(coeffs,design.type,n){
@@ -261,7 +263,8 @@ stochasticReserve <- function(triangle, var.power=1, link.power=0, design.type=c
   
   count.neg<-0
   ###BOOTSTRAP CYCLE###
-  if (bootstrap!=0){ 
+  if (bootstrap!=0){
+    pb <- winProgressBar(title = "progress bar", min = 1, max = nsim, width = 300)
     resMeanAyB <- matrix(0,length(resMeanAy),nsim)
     resMeanTotB <- rep(0,nsim)
     
@@ -384,9 +387,10 @@ stochasticReserve <- function(triangle, var.power=1, link.power=0, design.type=c
         resMeanAyB_1yr[,b] <- tapply(lda$year1[is.na(lda$value)],ldaOut$origin, sum)
         resMeanTotB_1yr[b] <- sum(resMeanAyB_1yr[,b])        
       }
-
+    setWinProgressBar(pb, b, title=paste(round(b/nsim*100, 0),"% Done"))
       
     }
+    close(pb)
     # compute estimation variance, adjusted by df 
     
     ##the adjustment for DF is included directly in residuals (see England(2002) Addendum) or in parametric bootstrap
@@ -479,10 +483,10 @@ stochasticReserve <- function(triangle, var.power=1, link.power=0, design.type=c
                 FullTriangle=FullTriangle,
                 scale=phi,
                 gamma_y=temp_y$gamma_y,
-                res.diag=res.diag,
+                res.diag=res.diag),
                 #if(bootstrap==2 && boot.adj==1) {perc.neg=perc.neg}
-                sims_1yr=resMeanAyB_1yr,
-                sims=resMeanAyB), 
+                #sims_1yr=resMeanAyB_1yr,
+                #sims=resMeanAyB), 
            
            glmFit[!(names(glmFit) %in% c("call"))]
   )
@@ -509,15 +513,3 @@ stochasticReserve <- function(triangle, var.power=1, link.power=0, design.type=c
   class(out) <- "glm"                     
   return(out)  
 }
-
-
-###DEBUG ONLY####
-set.seed(42)
-a<-stochasticReserve(triangleC,design.type=c(1,1,0),bootstrap=0,p.optim=TRUE)
-
-b<-stochasticReserve(triangleC,design.type=c(1,1,0),bootstrap=1,nsim=1000,var.power=1.6)
-b<-stochasticReserve(triangleC,design.type=c(1,1,0),bootstrap=2,boot.adj=1,nsim=1000,var.power=1.6)
-a<-stochasticReserve(triangleC,design.type=c(1,1,0),bootstrap=1,view_1yr=TRUE)
-
-a<-stochasticReserve(triangleC,design.type=c(0,1,1),bootstrap=1,view_1yr=TRUE)
-
