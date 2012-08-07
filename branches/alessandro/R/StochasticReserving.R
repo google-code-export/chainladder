@@ -10,8 +10,8 @@
 library(ChainLadder) #Load Chain Ladder package
 library(tweedie) #for var.power fitting
 
-####ONLY FOR DEBUG########
-########START#############
+####ONLY FOR DEBUG####
+########START#########
 
 #Load toList function (to convert data.set in matrix ... to be improved?
 toList <- function(data) {
@@ -22,15 +22,8 @@ toList <- function(data) {
   matr
 }
 
-#carico triangolo ed esposizione
-triangleC<-as.triangle(toList(read.csv("P:/Risk_MAnagement/Analysis on demand/Luigi/RExcel Reserving/dati/PROPERTY.csv",h=F)))
-#expos<-read.csv("P:/Risk_MAnagement/Analysis on demand/Luigi/RExcel Reserving/dati/exp.csv",h=F)
-#attr(triangleC,"exposure")<-expos[,1]
-triangleC
-
-####ONLY FOR DEBUG########
-########END###############
-
+####ONLY FOR DEBUG####
+#########END##########
 
 fit_gamma <- function(coeffs,design.type,n){
   pos.gamma<-2 #intercept + next position = 2
@@ -61,8 +54,8 @@ fit_gamma <- function(coeffs,design.type,n){
 }
 
 
-stochasticReserve <- function(triangle, var.power=1, link.power=0, design.type=c(1,1,0), view_1yr=FALSE,##link.power=0 is the log link ...
-                              cum=TRUE, exposure=FALSE, bootstrap=0, boot.adj=0, nsim=1000, proc.err=TRUE, p.optim=F,...){
+stochasticReserving <- function(triangle, var.power=1, link.power=0, design.type=c(1,1,0), rereserving=FALSE,##link.power=0 is the log link ...
+                                cum=TRUE, exposure=FALSE, bootstrap=0, boot.adj=0, nsim=1000, proc.err=TRUE, p.optim=F,...){
   
   call <- match.call()
   if (!("triangle") %in% class(triangle))
@@ -268,7 +261,7 @@ stochasticReserve <- function(triangle, var.power=1, link.power=0, design.type=c
     resMeanAyB <- matrix(0,length(resMeanAy),nsim)
     resMeanTotB <- rep(0,nsim)
     
-    if (view_1yr) { ##CREATE 1yr matrix
+    if (rereserving) { ##CREATE 1yr matrix
       resMeanAyB_1yr <- matrix(0,length(resMeanAy),nsim)
       resMeanTotB_1yr <- rep(0,nsim)
       
@@ -344,13 +337,13 @@ stochasticReserve <- function(triangle, var.power=1, link.power=0, design.type=c
           lda$ypB[is.na(lda$value)]=rnorm(n.fut,mean=mu.fut,sd=sqrt(phi))
         }
       }
-            
+      
       
       resMeanAyB[,b] <- tapply(lda$ypB[is.na(lda$value)],ldaOut$origin, sum)
       resMeanTotB[b] <- sum(resMeanAyB[,b])
       
       ### 1yr VIEW Calculation ###
-      if (view_1yr) {
+      if (rereserving) {
         
         lda$year1=lda$value  ## COPY ALL THE KNOWN VALUES
         next_y <- max(lda$origin)+1 ##NEXT DIAGONAL is for CY = max(origin)+1
@@ -387,7 +380,7 @@ stochasticReserve <- function(triangle, var.power=1, link.power=0, design.type=c
         resMeanAyB_1yr[,b] <- tapply(lda$year1[is.na(lda$value)],ldaOut$origin, sum)
         resMeanTotB_1yr[b] <- sum(resMeanAyB_1yr[,b])        
       }
-    setWinProgressBar(pb, b, title=paste(round(b/nsim*100, 0),"% Done"))
+      setWinProgressBar(pb, b, title=paste(round(b/nsim*100, 0),"% Done"))
       
     }
     close(pb)
@@ -405,7 +398,7 @@ stochasticReserve <- function(triangle, var.power=1, link.power=0, design.type=c
     S.E <- sqrt(c(mseEstAy,mseEstTot))
     CoV <- S.E / Expected.Reserve
     
-    if (view_1yr) {
+    if (rereserving) {
       mseEstAy_1yr <- apply(resMeanAyB_1yr,1,var)
       mseEstTot_1yr <- var(resMeanTotB_1yr)
       
@@ -419,21 +412,16 @@ stochasticReserve <- function(triangle, var.power=1, link.power=0, design.type=c
       
       Emergence.Pattern <- S.E_1yr/S.E
     }
-    
-
-    
-    # percentage of negative values modified
-    
   }
   
-  perc.neg<-count.neg/(nsim*n)
+  # percentage of negative values modified
   
-  # compile results
+  perc.neg<-count.neg/(nsim*n)
   
   
   #WRITING REPORT
   if (bootstrap!=0) {
-    if (view_1yr) {
+    if (rereserving) {
       resDf <- data.frame(Latest=Latest, 
                           Expected.Reserve=Expected.Reserve,
                           Prediction.Error=S.E,
@@ -450,13 +438,12 @@ stochasticReserve <- function(triangle, var.power=1, link.power=0, design.type=c
                           CoV=CoV,
                           Expected.Ultimate=Latest+Expected.Reserve,
                           GLMReserve=Reserve,
-                          Reserve.difference=Expected.Reserve/Reserve-1,
                           Dev.To.Date=Latest/Ultimate)
     }
     
-                  
   } else {
-    resDf <- data.frame(Latest=Latest, Reserve=Reserve,
+    resDf <- data.frame(Latest=Latest, 
+                        Reserve=Reserve,
                         Dev.To.Date=Latest/Ultimate,
                         Ultimate=Ultimate)
   }
@@ -478,18 +465,27 @@ stochasticReserve <- function(triangle, var.power=1, link.power=0, design.type=c
                        cy=ldaFit$cy)
   
   # output
-  out <- c(list(call=call,summary=resDf,
-                Triangle=triangle,
-                FullTriangle=FullTriangle,
-                scale=phi,
-                gamma_y=temp_y$gamma_y,
-                res.diag=res.diag),
-                #if(bootstrap==2 && boot.adj==1) {perc.neg=perc.neg}
-                #sims_1yr=resMeanAyB_1yr,
-                #sims=resMeanAyB), 
-           
-           glmFit[!(names(glmFit) %in% c("call"))]
-  )
+  out<-list(call=call,
+            summary=resDf,
+            Triangle=triangle,
+            FullTriangle=FullTriangle,
+            scale=phi,
+            bias=bias,
+            GLMReserve=resMeanTot,
+            gamma_y=temp_y$gamma_y,
+            res.diag=res.diag)
+  
+  if (bootstrap!=0) {
+    if (rereserving) {
+      out<-c(out,list(distr.res_ult=resMeanTotB,
+                      distr.res_1yr=resMeanTotB_1yr
+      ))
+    } else {
+      out<-c(out,list(distr.res_ult=resMeanTotB))  
+    }
+  }
+  
+  out<-c(out,glmFit[!(names(glmFit) %in% c("call"))])
   
   if (p.optim){
     #library(tweedie)
@@ -512,4 +508,22 @@ stochasticReserve <- function(triangle, var.power=1, link.power=0, design.type=c
   
   class(out) <- "glm"                     
   return(out)  
+}
+
+
+RC_report <- function(res,q=c(0.4,0.5,0.7,0.9,0.95,0.995,0.9993),RC.var=0.995){
+  #if (class(res) != "stochasticReserving")
+  #  stop("res must be of class 'stochasticReserving'")
+  
+  out<-list("Ultimate_View"=round(c(mean(res$distr.res_ult),sd(res$distr.res_ult)/mean(res$distr.res_ult),quantile(res$distr.res_ult,q)),4),
+           "1yr_View"=round(c(mean(res$distr.res_1yr),sd(res$distr.res_1yr)/mean(res$distr.res_1yr),quantile(res$distr.res_1yr,q)),4),
+           "RC_Ultimate"=round(quantile(res$distr.res_ult,RC.var)-mean(res$distr.res_ult),2),
+           "RC_1yr"=round(quantile(res$distr.res_1yr,RC.var)-mean(res$distr.res_1yr),2),
+           "Diagnostic"=round(c(res$GLMReserve,mean(res$distr.res_ult),mean(res$distr.res_1yr)),2))
+  for (i in 1:2){
+    attr(out[[i]],"names")[1]="mean"
+    attr(out[[i]],"names")[2]="CoV"
+  }
+  names(out[[5]])=c("GLMReserve","mean(Ultimate View)","mean(1yr View)") 
+  return(out)
 }
