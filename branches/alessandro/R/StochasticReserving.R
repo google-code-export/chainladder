@@ -240,7 +240,7 @@ stochasticReserving <- function(triangle, var.power=1, link.power=0, design.type
   phi <- summary(glmFit)$dispersion
   
   lda$eta <- design.matrix %*% coeffs
-  lda$eta <- lda$eta + lda$offset
+  if(exposure) {lda$eta <- lda$eta + lda$offset}
   lda$yp <- exp(lda$eta)  
   
   # sum to get reserve by year
@@ -324,7 +324,7 @@ stochasticReserving <- function(triangle, var.power=1, link.power=0, design.type
       }
       
       lda$etaB <- design.matrix %*% coeffsB
-      lda$etaB <- lda$etaB + lda$offset
+      if(exposure) {lda$etaB <- lda$etaB + lda$offset}
       lda$ypB <- exp(lda$etaB)
       
       ##ADD PROCESS ERROR
@@ -372,7 +372,7 @@ stochasticReserving <- function(triangle, var.power=1, link.power=0, design.type
         }
         
         lda$be1yr <- design.matrix %*% coeffs1yr ##ETA
-        lda$be1yr <- lda$be1yr + lda$offset        ##ETA + OFFSET
+        if(exposure) {lda$be1yr <- lda$be1yr + lda$offset}        ##ETA + OFFSET
         lda$be1yr <- exp(lda$be1yr)              ##Best Estimate 1yr, for all the values ..
         
         lda$year1[is.na(lda$year1)]=lda$be1yr[is.na(lda$year1)]
