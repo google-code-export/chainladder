@@ -79,8 +79,9 @@ stochasticReserving <- function(triangle, var.power=1, link.power=0, design.type
       family$linkfun(attr(tr.incr,"exposure")[lda$origin])
   
   #parameter fix for better intrepretation of results
-  #lda$origin<-lda$origin-1 ## NOT NECESSARY
-  lda$dev<-lda$dev-1
+  base.year=min(lda$origin)
+  lda$origin<-lda$origin-base.year+1 # ORIGIN MUST START FROM 1
+  lda$dev<-lda$dev-1 # DEVELOPMENT YEAR FROM 0
   lda$cy <- lda$origin + lda$dev
   
   ######################################
