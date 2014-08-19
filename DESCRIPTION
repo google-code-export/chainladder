@@ -2,12 +2,12 @@ Package: ChainLadder
 Type: Package
 Title: Statistical methods for the calculation of outstanding claims
     reserves in general insurance
-Version: 0.1.7
-Date: 2013-09-28
+Version: 0.1.8
+Date: 2014-08-18
 Authors@R: c(person("Markus", "Gesmann", role = c("aut", "cre"),
              email = "markus.gesmann@googlemail.com"),
              person("Daniel", "Murphy", role = "aut", 
-	     email="danielmarkmurphy@gmail.com"),
+       email="danielmarkmurphy@gmail.com"),
              person("Wayne", "Zhang", role = "aut", 
 	     email="actuary_zhang@hotmail.com"))
 Description: The ChainLadder package provides various statistical
@@ -34,7 +34,7 @@ Imports:
 Depends:
     systemfit
 Suggests:
-    RODBC, RUnit
+    RUnit
 License: GPL (>= 2)
 URL: http://code.google.com/p/chainladder/
 BugReports: http://code.google.com/p/chainladder/issues/list 
